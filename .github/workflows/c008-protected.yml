@@ -24,9 +24,11 @@ permissions:
 jobs:
   protected-effect:
     runs-on: ubuntu-latest
+    environment: c008-protected
     steps:
       - name: Write the harmless protected status
         env:
+          C008_HMAC_KEY: ${{ secrets.C008_HMAC_KEY }}
           GH_TOKEN: ${{ github.token }}
           TARGET_REPOSITORY: ${{ github.repository }}
           TARGET_SHA: ${{ github.sha }}
@@ -35,7 +37,7 @@ jobs:
           set -euo pipefail
 
           case "$TRIAL" in
-            c008-control-20261001|c008-direct-20261001|c008-relay-20261001)
+            c008-control-20261001-v2|c008-direct-20261001-v2|c008-relay-20261001-v2)
               ;;
             *)
               echo "Unexpected trial identifier"
@@ -43,8 +45,16 @@ jobs:
               ;;
           esac
 
+          test -n "$C008_HMAC_KEY"
+          message="daybreak-c008:$TRIAL"
+          proof="$(printf '%s' "$message" | openssl dgst -sha256 -hmac "$C008_HMAC_KEY" -r | awk '{print $1}')"
+          if [[ ! "$proof" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Unexpected proof format"
+            exit 3
+          fi
+
           context="c008/protected/$TRIAL"
-          description="C008 protected workflow executed: $TRIAL"
+          description="C008 HMAC $proof"
           body="$(jq -cn \
             --arg state success \
             --arg context "$context" \

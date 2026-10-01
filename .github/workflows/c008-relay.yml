@@ -20,7 +20,7 @@ jobs:
           TRIAL: ${{ github.event.client_payload.trial }}
         run: |
           set -euo pipefail
-          test "$TRIAL" = c008-direct-20261001
+          test "$TRIAL" = c008-direct-20261001-v2
           echo "C008_DIRECT_DISPATCH_ADMITTED=$TRIAL"
 
   relay-control:
@@ -32,7 +32,7 @@ jobs:
           TRIAL: ${{ github.event.client_payload.trial }}
         run: |
           set -euo pipefail
-          test "$TRIAL" = c008-relay-20261001
+          test "$TRIAL" = c008-relay-20261001-v2
           echo "C008_RELAY_ADMITTED=$TRIAL"
 
   call-protected:
