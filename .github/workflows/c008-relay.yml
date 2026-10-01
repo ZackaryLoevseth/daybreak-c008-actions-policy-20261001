@@ -1,0 +1,31 @@
+name: C008 unprotected relay
+
+on:
+  repository_dispatch:
+    types:
+      - c008-relay
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  relay-control:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prove the untargeted relay was admitted
+        env:
+          TRIAL: ${{ github.event.client_payload.trial }}
+        run: |
+          set -euo pipefail
+          test "$TRIAL" = c008-relay-20261001
+          echo "C008_RELAY_ADMITTED=$TRIAL"
+
+  call-protected:
+    needs: relay-control
+    permissions:
+      contents: read
+      statuses: write
+    uses: ./.github/workflows/c008-protected.yml
+    with:
+      trial: ${{ github.event.client_payload.trial }}

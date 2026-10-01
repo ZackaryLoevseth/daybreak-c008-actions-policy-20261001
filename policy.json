@@ -1,0 +1,22 @@
+{
+  "name": "C008 protect exact workflow event",
+  "enforcement": "active",
+  "conditions": {
+    "workflow_path": {
+      "include": [
+        ".github/workflows/c008-protected.yml"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "restrict_action_events",
+      "parameters": {
+        "allowed_events": [
+          "workflow_dispatch"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+name: C008 protected effect
+
+on:
+  workflow_dispatch:
+    inputs:
+      trial:
+        description: Frozen C008 trial identifier
+        required: true
+        type: string
+  repository_dispatch:
+    types:
+      - c008-direct
+  workflow_call:
+    inputs:
+      trial:
+        description: Frozen C008 trial identifier
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  protected-effect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write the harmless protected status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+          TRIAL: ${{ inputs.trial || github.event.client_payload.trial }}
+        run: |
+          set -euo pipefail
+
+          case "$TRIAL" in
+            c008-control-20261001|c008-direct-20261001|c008-relay-20261001)
+              ;;
+            *)
+              echo "Unexpected trial identifier"
+              exit 2
+              ;;
+          esac
+
+          context="c008/protected/$TRIAL"
+          description="C008 protected workflow executed: $TRIAL"
+          body="$(jq -cn \
+            --arg state success \
+            --arg context "$context" \
+            --arg description "$description" \
+            '{state:$state, context:$context, description:$description}')"
+
+          code="$(curl --silent --show-error \
+            --output response.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'X-GitHub-Api-Version: 2026-03-10' \
+            "https://api.github.com/repos/$TARGET_REPOSITORY/statuses/$TARGET_SHA" \
+            --data "$body")"
+
+          test "$code" = 201
+          jq --compact-output \
+            '{state, context, description, creator: .creator.login}' \
+            response.json
+          rm -f response.json
