@@ -3,6 +3,7 @@ name: C008 unprotected relay
 on:
   repository_dispatch:
     types:
+      - c008-direct
       - c008-relay
 
 permissions:
@@ -10,7 +11,20 @@ permissions:
   statuses: write
 
 jobs:
+  direct-observer:
+    if: github.event.action == 'c008-direct'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prove the direct dispatch was delivered
+        env:
+          TRIAL: ${{ github.event.client_payload.trial }}
+        run: |
+          set -euo pipefail
+          test "$TRIAL" = c008-direct-20261001
+          echo "C008_DIRECT_DISPATCH_ADMITTED=$TRIAL"
+
   relay-control:
+    if: github.event.action == 'c008-relay'
     runs-on: ubuntu-latest
     steps:
       - name: Prove the untargeted relay was admitted
@@ -22,6 +36,7 @@ jobs:
           echo "C008_RELAY_ADMITTED=$TRIAL"
 
   call-protected:
+    if: github.event.action == 'c008-relay'
     needs: relay-control
     permissions:
       contents: read
