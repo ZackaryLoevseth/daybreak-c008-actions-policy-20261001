@@ -1,0 +1,61 @@
+name: C008 minimal dispatch emitter
+
+on:
+  workflow_dispatch:
+    inputs:
+      route:
+        description: Frozen C008 downstream route
+        required: true
+        type: choice
+        options:
+          - direct
+          - relay
+
+permissions:
+  contents: write
+
+jobs:
+  emit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit one repository dispatch with the job token
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ROUTE: ${{ inputs.route }}
+          TARGET_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          case "$ROUTE" in
+            direct)
+              event_type=c008-direct
+              trial=c008-direct-20261001-v2
+              ;;
+            relay)
+              event_type=c008-relay
+              trial=c008-relay-20261001-v2
+              ;;
+            *)
+              echo "Unexpected route"
+              exit 2
+              ;;
+          esac
+
+          body="$(jq -cn \
+            --arg event_type "$event_type" \
+            --arg trial "$trial" \
+            '{event_type:$event_type, client_payload:{trial:$trial}}')"
+          code="$(curl --silent --show-error \
+            --output response.txt \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'X-GitHub-Api-Version: 2026-03-10' \
+            "https://api.github.com/repos/$TARGET_REPOSITORY/dispatches" \
+            --data "$body")"
+
+          test "$code" = 204
+          test ! -s response.txt
+          rm -f response.txt
+          echo "C008_EMITTED=$event_type"
